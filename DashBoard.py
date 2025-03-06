@@ -1,49 +1,59 @@
 import dash
-from dash import dcc, html, dash_table
-import plotly.express as px
+from dash import dcc, html, Input, Output, dash_table
 import pandas as pd
+import plotly.express as px
 
-# Sample dataset
-df = pd.DataFrame({
-    "Category": ["LeBron", "LeBron", "Michael Jordan", "Michael Jordan", "Kobe Bryant", "Kobe Bryant"],
-    "Value": [41871, 11487, 32292, 5633, 33643, 6306],
-    "Subcategory": ["PTS", "AST", "PTS", "AST", "PTS", "AST"]
-})
+# Load CSV file
+df = pd.read_csv("top50.csv")
 
 # Initialize Dash app
 app = dash.Dash(__name__)
 
-# Layout
 app.layout = html.Div([
-    html.H1("Who is the 'GOAT'?", style={'textAlign': 'center'}),
-
+    html.H1("NBA Player Stats Dashboard"),
     dcc.Dropdown(
-        id="category-dropdown",
-        options=[{"label": cat, "value": cat} for cat in df["Category"].unique()],
-        value="A",
-        clearable=False
+        id='player-dropdown',
+        options=[player for player in df['Player'].unique()],
+        placeholder="Select a player",
+        searchable=True
     ),
-
-    dcc.Graph(id="bar-chart"),
-
+    dcc.Graph(id='player-bar-chart'),
     dash_table.DataTable(
-        id="data-table",
-        columns=[{"name": col, "id": col} for col in df.columns],
-        page_size=5
+        id='player-table',
+        columns=[
+            {'name': 'Player', 'id': 'Player'},
+            {'name': 'Points', 'id': 'Points'},
+            {'name': 'Assists', 'id': 'Assists'}
+        ],
+        style_table={'margin-top': '20px', 'overflowX': 'auto'},
+        style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
+        style_cell={'textAlign': 'center', 'padding': '10px'}
     )
 ])
 
-# Callback to update graph and table
 @app.callback(
-    [dash.Output("bar-chart", "figure"),
-     dash.Output("data-table", "data")],
-    [dash.Input("category-dropdown", "value")]
+    [Output('player-bar-chart', 'figure'),
+     Output('player-table', 'data')],
+    [Input('player-dropdown', 'value')]
 )
-def update_dashboard(selected_category):
-    filtered_df = df[df["Category"] == selected_category]
-    fig = px.bar(filtered_df, x="Subcategory", y="Value", title=f"Values for Category {selected_category}")
-    return fig, filtered_df.to_dict("records")
+def update_dashboard(selected_player):
+    if not selected_player:
+        return px.bar(title="Select a player to view stats"), []
+    
+    filtered_df = df[df['Player'] == selected_player]
+    
+    fig = px.bar(
+        filtered_df.melt(id_vars=['Player'], value_vars=['Points', 'Assists']),
+        x='variable',
+        y='value',
+        text='value',
+        title=f"{selected_player}'s Stats",
+        labels={'variable': 'Stat', 'value': 'Total'},
+        color='variable'
+    )
+    fig.update_traces(textposition='outside')
+    
+    return fig, filtered_df.to_dict('records')
 
-# Run server
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run_server(debug=True)
