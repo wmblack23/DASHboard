@@ -15,7 +15,8 @@ app.layout = html.Div([
         id='player-dropdown',
         options=[player for player in df['Player'].unique()],
         placeholder="Select a player",
-        searchable=True
+        searchable=True,
+        multi=True
     ),
     dcc.Graph(id='player-bar-chart'),
     dash_table.DataTable(
@@ -40,16 +41,18 @@ def update_dashboard(selected_player):
     if not selected_player:
         return px.bar(title="Select a player to view stats"), []
     
-    filtered_df = df[df['Player'] == selected_player]
+    filtered_df = df[df['Player'].isin(selected_player)]
     
+    # Create bar chart for selected players
     fig = px.bar(
         filtered_df.melt(id_vars=['Player'], value_vars=['Points', 'Assists']),
         x='variable',
         y='value',
+        color='Player', 
         text='value',
-        title=f"{selected_player}'s Stats",
+        title="Player Stats Comparison",
         labels={'variable': 'Stat', 'value': 'Total'},
-        color='variable'
+        barmode='group' 
     )
     fig.update_traces(textposition='outside')
     
